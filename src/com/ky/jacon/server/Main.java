@@ -26,7 +26,7 @@ public class Main extends Application {
       try {
         DbConn.getInstance();
         
-        Registry registry = LocateRegistry.createRegistry(1234);
+        Registry registry = LocateRegistry.createRegistry(3344);
           
         GlobalServiceImpl globalServiceImpl = new GlobalServiceImpl();
 
