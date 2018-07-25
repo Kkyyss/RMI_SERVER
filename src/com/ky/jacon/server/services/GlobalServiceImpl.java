@@ -43,7 +43,7 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
       String sql = "SELECT [user].*, [role].role_name"
               + " FROM [user] \n"
               + "INNER JOIN [role] ON [role].role_id = [user].role_id \n"
-              + "WHERE username LIKE ? AND password=?";
+              + "WHERE username LIKE ? AND password=? AND active <> 0";
 
       try (Connection conn = DbConn.getInstance().getConnection();
               PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -65,15 +65,16 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
   public User addUser(User user) throws RemoteException {
     try (Connection conn = DbConn.getInstance().getConnection()) {
           conn.setAutoCommit(false);
-          String sql = "INSERT INTO [user](user_id,username,password,email)\n"
+          String sql = "INSERT INTO [user](user_id,username,password,email,active)\n"
               + "VALUES\n"
-              + "(?,?,?,?)";
+              + "(?,?,?,?,?)";
           PreparedStatement pstmt = conn.prepareStatement(sql);      
         try {
           pstmt.setString(1, UUID.randomUUID().toString());
           pstmt.setString(2, user.getUsername());
           pstmt.setString(3, user.getPassword());
           pstmt.setString(4, user.getEmail());
+          pstmt.setInt(5, user.getActive());
 
           int affectedRows = pstmt.executeUpdate();
           
@@ -94,7 +95,7 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
   }
 
   @Override
-  public String deleteUser(String id) throws RemoteException {
+  public String deleteUser(User user) throws RemoteException {
     String sql = "DELETE FROM [user] WHERE user_id = ?";
     
     try (Connection conn = DbConn.getInstance().getConnection()) {
@@ -103,7 +104,7 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
       PreparedStatement pstmt = conn.prepareStatement(sql);
       
       try {
-        pstmt.setString(1, id);
+        pstmt.setString(1, user.getUser_id());
         
         int rs = pstmt.executeUpdate();
         
@@ -129,7 +130,8 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
   public List<User> getUsers() throws RemoteException {
     String sql = "SELECT [user].*, [role].role_name from [user] \n"
             + "INNER JOIN [role] ON [role].role_id = [user].role_id \n"
-            + "WHERE [user].role_id <> 3";
+            + "WHERE user_id <> 1 AND username NOT LIKE 'ADMIN'";
+    
     try (Connection conn = DbConn.getInstance().getConnection();
             Statement stmt = conn.createStatement()) {
 
@@ -537,9 +539,9 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
   public Student addStudent(Student student) throws RemoteException {
     try (Connection conn = DbConn.getInstance().getConnection()) {
         conn.setAutoCommit(false);
-        String sql = "INSERT INTO [user](user_id,username,password,role_id,email)\n"
+        String sql = "INSERT INTO [user](user_id,username,password,role_id,email,active)\n"
             + "VALUES\n"
-            + "(?,?,?,3,?)";
+            + "(?,?,?,3,?,?)";
         PreparedStatement pstmt = conn.prepareStatement(sql);
       try {
         student.setUser_id(UUID.randomUUID().toString());
@@ -547,6 +549,7 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
         pstmt.setString(2, student.getStudent_no());
         pstmt.setString(3, student.getStudent_ic());
         pstmt.setString(4, student.getEmail());
+        pstmt.setInt(5, student.getActive());
 
         int affectedRows = pstmt.executeUpdate();
 
@@ -598,6 +601,7 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
       user.setPassword(rs.getString("password"));
       user.setUsername(rs.getString("username"));
       user.setUser_id(rs.getString("user_id"));
+      user.setActive(rs.getInt("active"));
       Role role = new Role();
       role.setRole_id(rs.getInt("role_id"));
       role.setRole_name(rs.getString("role_name"));
@@ -778,5 +782,82 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
       return null;
     }
     return null;  
+  }
+
+  @Override
+  public String switchStatus(User u) throws RemoteException {
+    try (Connection conn = DbConn.getInstance().getConnection()) {
+      String sql = "UPDATE [user]\n"
+              + "SET active = ?\n"
+              + "WHERE user_id = ?";
+
+      PreparedStatement pstmt = conn.prepareStatement(sql);
+      
+      try {
+        conn.setAutoCommit(false);
+        pstmt.setInt(1, u.getActive());
+        pstmt.setString(2, u.getUser_id());
+
+        int rs = pstmt.executeUpdate();
+        if (rs <= 0) {
+          return "Update failed!";
+        }
+        conn.commit();
+      } catch (SQLException ex) {
+        Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+        conn.rollback();
+      } finally {
+        if (pstmt != null) {
+          pstmt.close();
+        }        
+      }
+
+    } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return ex.toString();
+    }
+    return null;
+  }
+
+  @Override
+  public List<User> getUsersByRole(String role) throws RemoteException {
+    String sql = "SELECT [user].*, [role].role_name from [user] \n"
+            + "INNER JOIN [role] ON [role].role_id = [user].role_id \n"
+            + "WHERE user_id <> 1 AND username NOT LIKE 'ADMIN' \n"
+            + "AND [role].role_name LIKE ?";
+    
+    try (Connection conn = DbConn.getInstance().getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(sql)) {
+      
+        pstmt.setString(1, role);
+      ResultSet rs = pstmt.executeQuery();
+      List<User> users = new ArrayList<>();
+      while (rs.next()) {
+        users.add(getUserFromRs(rs));
+      }
+      return users;
+  } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return null;
+    }
+  }
+
+  @Override
+  public List<String> getRoles() throws RemoteException {
+    String sql = "SELECT [role].role_name from [role]";
+    
+    try (Connection conn = DbConn.getInstance().getConnection();
+            Statement stmt = conn.createStatement()) {
+
+      ResultSet rs = stmt.executeQuery(sql);
+      List<String> roles = new ArrayList<>();
+      while (rs.next()) {
+        roles.add(rs.getString("role_name"));
+      }
+      return roles;
+  } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return null;
+    }
   }
 }
