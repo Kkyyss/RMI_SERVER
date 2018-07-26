@@ -1007,4 +1007,60 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
     }
     return null;
   }
+
+  @Override
+  public String saveBook(Book book) throws RemoteException {
+    String sql = "SELECT 0 FROM [book] WHERE book_id <> ? AND book_isbn = ?";    
+    
+    try {
+      Connection conn = DbConn.getInstance().getConnection();
+      PreparedStatement pstmt = conn.prepareStatement(sql);
+      pstmt.setString(1, book.getBook_id());
+      pstmt.setString(2, book.getBook_isbn());
+      
+      ResultSet rs = pstmt.executeQuery();
+      
+      if (rs.next()) {
+        return "ISBN Exist!";
+      }
+      else {    
+        try {
+          pstmt = conn.prepareStatement(sql);
+          sql = "UPDATE [book] "
+                  + "SET book_name = ?, "
+                  + "book_author = ?, "
+                  + "book_subject = ?, "
+                  + "book_publisher = ?, "
+                  + "book_isbn = ?, "
+                  + "book_quantity = ? "
+                  + "WHERE book_id = ?"; 
+          conn.setAutoCommit(false);
+          pstmt = conn.prepareStatement(sql);
+          pstmt.setString(1, book.getBook_name());
+          pstmt.setString(2, book.getBook_author());
+          pstmt.setString(3, book.getBook_subject());
+          pstmt.setString(4, book.getBook_publisher());
+          pstmt.setString(5, book.getBook_isbn());
+          pstmt.setInt(6, book.getBook_quantity());
+          pstmt.setString(7, book.getBook_id());
+
+          int affectedRows = pstmt.executeUpdate();
+          
+          if (affectedRows <= 0) return "No such book!";
+          
+          conn.commit();
+        } catch (SQLException ex) {
+          Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+          conn.rollback();
+        } finally {
+          if (pstmt != null) {
+            pstmt.close();
+          }
+        }
+    } 
+      } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    return null;
+  }
 }
