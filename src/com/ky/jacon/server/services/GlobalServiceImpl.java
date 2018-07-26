@@ -96,6 +96,7 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
 
   @Override
   public String deleteUser(User user) throws RemoteException {
+    
     String sql = "DELETE FROM [user] WHERE user_id = ?";
     
     try (Connection conn = DbConn.getInstance().getConnection()) {
@@ -123,7 +124,9 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
       Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
       return ex.toString();
     }
-    return null;
+    
+    return 
+            user.getRole().getRole_name().equals("student") ? deleteStudent(user.getUser_id()) : null;
   }
 
   @Override
@@ -859,5 +862,149 @@ public class GlobalServiceImpl extends UnicastRemoteObject implements GlobalServ
       Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
       return null;
     }
+  }
+
+  @Override
+  public String deleteStudent(String uid) throws RemoteException {
+    String sql = "DELETE FROM [student] WHERE user_id = ?";
+    
+    try (Connection conn = DbConn.getInstance().getConnection()) {
+      conn.setAutoCommit(false);
+      
+      PreparedStatement pstmt = conn.prepareStatement(sql);
+      
+      try {
+        pstmt.setString(1, uid);
+        
+        int rs = pstmt.executeUpdate();
+        
+        if (rs <= 0) return "No such user!";
+        
+        conn.commit();
+      } catch (SQLException ex) {
+        Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+        conn.rollback();
+      } finally {
+        if (pstmt != null)
+          pstmt.close();
+      }
+    
+    } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return ex.toString();
+    }
+    return deleteIssueByUserId(uid);
+  }
+
+  @Override
+  public String deleteIssueByUserId(String uid) throws RemoteException {
+    String sql = "SELECT 0 FROM [issue] WHERE user_id = ?";
+    
+    try (Connection conn = DbConn.getInstance().getConnection()) {
+      PreparedStatement pstmt = conn.prepareStatement(sql);
+      pstmt.setString(1, uid);
+      
+      ResultSet count = pstmt.executeQuery();
+      
+      if (!count.next()) return null;
+      
+      sql = "DELETE FROM [issue] WHERE user_id = ?";
+      conn.setAutoCommit(false);
+      
+      pstmt = conn.prepareStatement(sql);
+      
+      try {
+        pstmt.setString(1, uid);
+        
+        int rs = pstmt.executeUpdate();
+        
+        if (rs <= 0) return "No issue available!";
+        
+        conn.commit();
+      } catch (SQLException ex) {
+        Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+        conn.rollback();
+      } finally {
+        if (pstmt != null)
+          pstmt.close();
+      }
+    
+    } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return ex.toString();
+    }
+    return null;
+  }
+
+  @Override
+  public String deleteBook(String id) throws RemoteException {
+    String sql = "DELETE FROM [book] WHERE book_id = ?";
+    
+    try (Connection conn = DbConn.getInstance().getConnection()) {
+      conn.setAutoCommit(false);
+      
+      PreparedStatement pstmt = conn.prepareStatement(sql);
+      
+      try {
+        pstmt.setString(1, id);
+        
+        int rs = pstmt.executeUpdate();
+        
+        if (rs <= 0) return "No such book!";
+        
+        conn.commit();
+      } catch (SQLException ex) {
+        Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+        conn.rollback();
+      } finally {
+        if (pstmt != null)
+          pstmt.close();
+      }
+    
+    } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return ex.toString();
+    }
+    return deleteIssueByBookId(id);  
+  }
+
+  @Override
+  public String deleteIssueByBookId(String bid) throws RemoteException {
+    String sql = "SELECT 0 FROM [issue] WHERE book_id = ?";
+    
+    try (Connection conn = DbConn.getInstance().getConnection()) {
+      PreparedStatement pstmt = conn.prepareStatement(sql);
+      pstmt.setString(1, bid);
+      
+      ResultSet count = pstmt.executeQuery();
+      
+      if (!count.next()) return null;
+      
+      sql = "DELETE FROM [issue] WHERE book_id = ?";
+      conn.setAutoCommit(false);
+      
+      pstmt = conn.prepareStatement(sql);
+      
+      try {
+        pstmt.setString(1, bid);
+        
+        int rs = pstmt.executeUpdate();
+        
+        if (rs <= 0) return "No issue available!";
+        
+        conn.commit();
+      } catch (SQLException ex) {
+        Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+        conn.rollback();
+      } finally {
+        if (pstmt != null)
+          pstmt.close();
+      }
+    
+    } catch (SQLException ex) {
+      Logger.getLogger(GlobalServiceImpl.class.getName()).log(Level.SEVERE, null, ex);
+      return ex.toString();
+    }
+    return null;
   }
 }

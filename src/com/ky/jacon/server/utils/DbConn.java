@@ -9,9 +9,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 
 /**
  *
@@ -29,6 +27,7 @@ public class DbConn {
         try {
             conn = DriverManager.getConnection(url);
             if (conn != null) {
+                
                 DatabaseMetaData meta = conn.getMetaData();
                 System.out.println("The driver name is " + meta.getDriverName());
             }
@@ -47,7 +46,6 @@ public class DbConn {
         } else if (instance.getConnection().isClosed()) {
             instance = new DbConn();
         }
-
         return instance;
     }
 }
